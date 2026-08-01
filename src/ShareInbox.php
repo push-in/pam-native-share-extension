@@ -1,0 +1,3 @@
+<?php
+declare(strict_types=1);namespace Pam\Native\ShareExtension;use Closure;use Pam\Native\Modules\NativeModuleResult;use Pam\Native\Modules\NativeModules;
+final class ShareInbox{/** @param Closure(list<SharedItem>):void$complete */public function drain(Closure$complete):int{return NativeModules::call('share-extension','drain',[],static function(NativeModuleResult$r)use($complete){$rows=$r->succeeded()?json_decode((string)($r->values()['json']??'[]'),true):[];$complete(array_map(static fn(array$x)=>new SharedItem((string)$x['id'],SharedItemKind::from((int)$x['kind']),(string)$x['value'],(string)$x['mimeType'],(int)$x['createdAtMillis']),is_array($rows)?$rows:[]));});}}

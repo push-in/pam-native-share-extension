@@ -1,0 +1,2 @@
+<?php
+declare(strict_types=1);$roots=['Pam\\Native\\ShareExtension\\'=>dirname(__DIR__).'/src/','Pam\\Native\\'=>dirname(__DIR__,2).'/../pam-native/packages/native/src/'];spl_autoload_register(static function(string$c)use($roots){foreach($roots as$p=>$r)if(str_starts_with($c,$p)){$f=$r.str_replace('\\','/',substr($c,strlen($p))).'.php';if(is_file($f))require$f;return;}});use Pam\Native\ShareExtension\SharedItemKind;if(array_map(fn($x)=>$x->value,SharedItemKind::cases())!==[1,2,3]){echo"FAIL enum\n";exit(1);}echo"PASS shared item kinds are sequential\n1 tests, 0 failures\n";

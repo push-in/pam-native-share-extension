@@ -1,0 +1,1 @@
+{"$schema":"vendor/pushinbr/pam-native-plugin-kit/resources/pam-native.idl.schema.json","version":1,"namespace":"Pam.ShareExtension","enums":{"SharedItemKind":{"Text":1,"Url":2,"File":3}},"records":{"SharedItem":{"id":"string","kind":"SharedItemKind","value":"string","mimeType":"string","createdAtMillis":"int"}}}
