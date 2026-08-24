@@ -1,20 +1,54 @@
+<!-- pam:product-page:start -->
+<div align="center">
+
 # PAM Native Share Extension
 
-## Start here
+**Bring content into your app from anywhere in the operating system.**
 
-This is a Composer extension for PAM Native. Install the PAM Runtime, create a native project, and then add this package through PAM’s verified Composer toolchain:
+Receive validated text, URLs, and files from Android shares and an iOS Share Extension through sandbox-safe handoff contracts.
+
+[![Latest version](https://img.shields.io/packagist/v/pushinbr/pam-native-share-extension?style=flat-square&label=stable)](https://packagist.org/packages/pushinbr/pam-native-share-extension)
+[![CI](https://img.shields.io/github/actions/workflow/status/push-in/pam-native-share-extension/ci.yml?branch=main&style=flat-square&label=CI)](https://github.com/push-in/pam-native-share-extension/actions)
+![PHP](https://img.shields.io/badge/PHP-8.5-777BB4?style=flat-square&logo=php&logoColor=white)
+![Android](https://img.shields.io/badge/Android-API%2026%2B-3DDC84?style=flat-square&logo=android&logoColor=white)
+![iOS](https://img.shields.io/badge/iOS-15%2B-000000?style=flat-square&logo=apple&logoColor=white)
+
+**[Documentation](https://push-in.github.io/pam-docs/native/overview/) · [Quick start](#quick-start) · [What you can build](#what-you-can-build) · [PAM ecosystem](https://push-in.github.io/pam-docs/ecosystem/) · [Issues](https://github.com/push-in/pam-native-share-extension/issues)**
+
+</div>
+
+---
+
+## Why PAM Native Share Extension
+
+Receive validated text, URLs, and files from Android shares and an iOS Share Extension through sandbox-safe handoff contracts. The public API is strictly typed for PHP 8.5; expensive or frame-sensitive work stays in Rust or the platform SDK instead of crossing the application boundary every frame.
+
+| | |
+| --- | --- |
+| **Best for** | A focused capability you can add to any PAM Native application |
+| **Native path** | Android Sharesheet · iOS Share Extension |
+| **Application model** | Composer package + generated native integration |
+| **Design rule** | Independent module; no feed, vertical, or application template bundled |
+
+## What you can build
+
+- Save-to-app and read-later flows
+- Import media or documents from other apps
+- Create posts or messages from the system share sheet
+
+## Quick start
+
+Already have a PAM Native project? Add only this capability:
 
 ```bash
-curl --proto '=https' --proto-redir '=https' --tlsv1.2 \
-    --connect-timeout 15 --max-time 60 --max-filesize 1048576 -fsSL \
-    https://github.com/push-in/pam/releases/latest/download/install.sh | sh
-
-pam init my-app --template native
-cd my-app
 pam composer require pushinbr/pam-native-share-extension
 pam doctor --fix
 ```
 
+New to PAM? Follow the **[five-minute PAM Native setup](https://push-in.github.io/pam-docs/native/overview/)** once, then return here. Your application stays a normal Composer project with a committed lockfile.
+<!-- pam:product-page:end -->
+
+## See it in action
 
 Receives text, URLs and sandboxed file copies from Android `ACTION_SEND`/`ACTION_SEND_MULTIPLE` and an iOS Share Extension. Call `ShareInbox::drain()` after launch or resume.
 
@@ -78,7 +112,7 @@ All coded states, kinds, and variants are sequential integer-backed enums. Use e
 
 ## Compatibility and support
 
-This package targets PAM Native `0.6.x`, Android API 26+, and iOS 15+ unless a platform-specific section above states a stricter requirement. Platform SDKs, credentials, entitlements, physical hardware, and store configuration remain application responsibilities.
+This package targets PAM Native `0.8.x`, Android API 26+, and iOS 15+ unless a platform-specific section above states a stricter requirement. Platform SDKs, credentials, entitlements, physical hardware, and store configuration remain application responsibilities.
 
 - [PAM documentation](https://push-in.github.io/pam-docs/introduction/)
 - [PAM Native overview](https://push-in.github.io/pam-docs/native/overview/)
