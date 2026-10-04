@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.2.2 - 2026-10-04
+
+- Copy incoming iOS file URLs into the App Group inbox and preserve the source
+  title, original filename, and a stable identifier for each share.
+- Clarify that the core `IncomingShares` API imports files into the application
+  sandbox, while `ShareInbox` exposes raw App Group file tokens on iOS.
+
+## 0.2.1 - 2026-08-25
+
+- Accept the PAM Native 1.x runtime and plugin contract.
+
+## 0.2.0 - 2026-08-23
+
+- Support the PAM Native 0.8 line on PHP 8.5.
+
 ## 0.1.2 - 2026-08-24
 
 - Expand the plugin contract through the complete pre-1.0 PAM Native line.
