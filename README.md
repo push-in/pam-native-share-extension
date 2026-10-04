@@ -52,6 +52,8 @@ New to PAM? Follow the **[five-minute PAM Native setup](https://push-in.github.i
 
 Receives text, URLs and sandboxed file copies from Android `ACTION_SEND`/`ACTION_SEND_MULTIPLE` and an iOS Share Extension. Call `ShareInbox::drain()` after launch or resume.
 
+The iOS extension keeps each share together, copies file URLs into the App Group inbox, and carries the original filename and title when the source app provides them. PAM Native's `IncomingShares` API imports these files into the app sandbox and exposes the filename as `$file->name`. Use either `IncomingShares` or this package's `ShareInbox` to consume the App Group inbox; both drain the same entries.
+
 iOS requires the generated app and extension targets to share `group.<application-id>.pam-native`; the supplied entitlements use the `PAM_NATIVE_APPLICATION_ID` build setting. Never trust shared MIME types or file contents—validate them before processing or uploading.
 
 ## Install
@@ -70,13 +72,15 @@ use Pam\Native\ShareExtension\ShareInbox;
 
 (new ShareInbox())->drain(function (array $items): void {
     foreach ($items as $item) {
-        // $item->kind is a typed enum; $item->value is text, URL, or a copied file path.
+        // $item->kind is a typed enum; $item->value is text, URL, or a file inbox token.
         handleSharedItem($item);
     }
 });
 ```
 
 Call `drain()` after launch and whenever the app resumes. Successfully returned entries are consumed, so move any file you need to retain into application-owned storage.
+
+For file imports on both platforms, prefer PAM Native's `IncomingShares`: it returns `FileReference` values in the application sandbox. On iOS, `ShareInbox` exposes the App Group file token and consumes the same inbox without importing that file into the application sandbox.
 
 
 ## What installation does
@@ -112,7 +116,7 @@ All coded states, kinds, and variants are sequential integer-backed enums. Use e
 
 ## Compatibility and support
 
-This package targets PAM Native `0.8.x`, Android API 26+, and iOS 15+ unless a platform-specific section above states a stricter requirement. Platform SDKs, credentials, entitlements, physical hardware, and store configuration remain application responsibilities.
+This package targets PAM Native `0.8.x` through `1.x`, Android API 26+, and iOS 15+ unless a platform-specific section above states a stricter requirement. Platform SDKs, credentials, entitlements, physical hardware, and store configuration remain application responsibilities.
 
 - [PAM documentation](https://push-in.github.io/pam-docs/introduction/)
 - [PAM Native overview](https://push-in.github.io/pam-docs/native/overview/)
