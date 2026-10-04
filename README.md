@@ -52,6 +52,8 @@ New to PAM? Follow the **[five-minute PAM Native setup](https://push-in.github.i
 
 Receives text, URLs and sandboxed file copies from Android `ACTION_SEND`/`ACTION_SEND_MULTIPLE` and an iOS Share Extension. Call `ShareInbox::drain()` after launch or resume.
 
+The iOS extension keeps each share together, copies file URLs into the App Group inbox, and carries the original filename and title when the source app provides them. PAM Native's `IncomingShares` API imports these files into the app sandbox and exposes the filename as `$file->name`.
+
 iOS requires the generated app and extension targets to share `group.<application-id>.pam-native`; the supplied entitlements use the `PAM_NATIVE_APPLICATION_ID` build setting. Never trust shared MIME types or file contents—validate them before processing or uploading.
 
 ## Install
