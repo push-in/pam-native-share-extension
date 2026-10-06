@@ -69,9 +69,9 @@ $check(
     ($plugin['share'] ?? null) === ['configKey' => 'shareExtension', 'accept' => ['*/*'], 'multiple' => true],
 );
 $check(
-    'the plugin requires the share capability and the PAM Native release that provides it',
-    in_array('plugins.share.v1', $plugin['capabilities']['required'] ?? [], true)
-        && version_compare($plugin['pamNative']['minimum'], '1.16.0', '>='),
+    'the plugin requires the PAM Native release that reads share and no capability its runtime lacks',
+    version_compare($plugin['pamNative']['minimum'], '1.16.0', '>=')
+        && !isset($plugin['capabilities']),
 );
 $check(
     'Android intent filters are not hardcoded in a manifest fragment',

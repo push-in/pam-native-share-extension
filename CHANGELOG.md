@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.1 - 2026-10-06
+
+- Stop requiring the `plugins.share.v1` capability: the PAM Native PHP
+  runtime does not list it, so 0.3.0 failed plugin discovery at startup
+  ("requires unavailable capabilities"). PAM Native 1.16 is still enforced by
+  Composer and `pamNative.minimum`.
+
 ## 0.3.0 - 2026-10-06
 
 - Accepted share types are configurable per app with `plugins.shareExtension`
@@ -9,7 +16,7 @@
   generated from it instead of being hardcoded to `*/*`, so an app that only
   handles media is no longer offered for PDFs.
 - The default stays `*/*`, several items at once, with the same iOS counts.
-- Requires PAM Native 1.16 (`plugins.share.v1`). The manifest fragment with
+- Requires PAM Native 1.16. The manifest fragment with
   the `*/*` filters and the hardcoded activation rule are removed.
 - The example accepts text, images and videos.
 

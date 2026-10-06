@@ -6,7 +6,7 @@
     "require": {
         "php": "^8.5",
         "pushinbr/pam-native": "^1.16",
-        "pushinbr/pam-native-share-extension": "^0.3.0"
+        "pushinbr/pam-native-share-extension": "^0.3.1"
     },
     "autoload": {
         "psr-4": {

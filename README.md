@@ -191,7 +191,8 @@ All classes live in `Pam\Native\ShareExtension`.
 
 | `pushinbr/pam-native-share-extension` | `pushinbr/pam-native` | Android | iOS |
 | --- | --- | --- | --- |
-| 0.3.0 | `>=1.16.0 <2.0.0` | API 26+ | 15+, accepted types from `plugins.shareExtension` |
+| 0.3.1 | `>=1.16.0 <2.0.0` | API 26+ | 15+, accepted types from `plugins.shareExtension` |
+| 0.3.0 | `>=1.16.0 <2.0.0` | — | Do not use: fails plugin discovery at runtime |
 | 0.2.2 | `>=0.8.0 <2.0.0` (tested with 1.14.x) | API 26+ | 15+, files copied into the App Group with names and titles |
 | 0.2.1 | `>=0.8.0 <2.0.0` | API 26+ | 15+ |
 
