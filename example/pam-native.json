@@ -1,5 +1,5 @@
 {
-    "$schema": "vendor/pushinbr/pam-native/resources/pam-native.schema.json",
+    "$schema": "vendor/pushinbr/pam-native/packages/native/resources/pam-native.schema.json",
     "version": 1,
     "applicationId": "dev.pam.examples.share",
     "name": "Share Demo",
@@ -10,5 +10,11 @@
     "android": {"minSdk": 26, "targetSdk": 36, "permissions": [], "deepLinks": []},
     "ios": {"minimumVersion": "15.0"},
     "modules": [],
-    "views": []
+    "views": [],
+    "plugins": {
+        "shareExtension": {
+            "accept": ["text/plain", "image/*", "video/*"],
+            "multiple": ["image/*", "video/*"]
+        }
+    }
 }

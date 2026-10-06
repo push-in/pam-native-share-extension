@@ -63,7 +63,29 @@ pam add share-extension
 pam doctor
 ```
 
-PAM Native generates the iOS Share Extension and Android intent filters automatically from the package manifest.
+PAM Native generates the iOS Share Extension and Android intent filters automatically from the package manifest and the types you accept.
+
+## Choose the accepted types
+
+By default the app is offered for every share (`*/*`), several items at once. Narrow it in `pam-native.json`; prepare/build reads it (PAM Native 1.16+):
+
+```json
+{
+    "plugins": {
+        "shareExtension": {
+            "accept": ["text/plain", "image/*", "video/*"],
+            "multiple": ["image/*", "video/*"]
+        }
+    }
+}
+```
+
+| Key | Default | Meaning |
+| --- | --- | --- |
+| `accept` | `["*/*"]` | 1–16 lowercase MIME types (`type/subtype` or `type/*`). |
+| `multiple` | `true` | `true`: every accepted type may arrive several at once; `false`: single items only; or a list of accepted types that may. |
+
+With the example above a PDF share no longer lists the app, a single text or link does, and photos/videos may arrive in batches. Keep validating what arrives in PHP: the share sheet is untrusted input.
 
 ## Drain the inbox
 
@@ -85,25 +107,28 @@ For file imports on both platforms, prefer PAM Native's `IncomingShares`: it ret
 
 ## What installation does
 
-`pam add share-extension` resolves the official compatible package, performs a non-mutating Composer preflight, updates the normal `composer.json` and `composer.lock`, refreshes generated native integration when required, and leaves the project ready for `pam doctor` validation. Nothing is added to `pam-native.json`.
+`pam add share-extension` resolves the official compatible package, performs a non-mutating Composer preflight, updates the normal `composer.json` and `composer.lock`, refreshes generated native integration when required, and leaves the project ready for `pam doctor` validation. Nothing is added to `pam-native.json`; add `plugins.shareExtension` only to narrow the accepted types.
 
 Use `pam packages` to inspect availability and `pam remove share-extension` to uninstall the capability safely. Direct Composer commands are an advanced interoperability path; PAM is the supported application workflow.
 
 ### Android
 
-The plugin manifest adds two intent filters to `PamActivity`:
-`android.intent.action.SEND` and `SEND_MULTIPLE` with `mimeType="*/*"`. No
-permissions are needed: shared content URIs are copied into the app sandbox.
-If you only want specific types (or no extra package), the core can declare
-the filters itself with `android.shareTargets` in `pam-native.json` (up to 16
-MIME patterns such as `image/*`, `video/*`, `text/plain`); that is what Zé
-Chat does.
+PAM Native adds one intent filter per accepted type to `PamActivity`:
+`android.intent.action.SEND`, plus `SEND_MULTIPLE` for the types in
+`multiple`. The default is `*/*` with both actions. No permissions are needed:
+shared content URIs are copied into the app sandbox. Types listed in the
+core `android.shareTargets` are merged into the same filters.
 
 ### iOS
 
 - A Share Extension target (`PamShareExtension`, bundle suffix `.share`,
   `com.apple.share-services`) generated from `ios/ShareExtension`.
-- Activation rule: text, up to 8 web URLs, 32 files, 32 images and 8 movies.
+- Activation rule generated from `accept`/`multiple`. The default `*/*` keeps
+  text, up to 8 web URLs, 32 files, 32 images and 8 movies. `text/plain`
+  enables text and web URLs, `image/*` images (32, or 1), `video/*` movies
+  (8, or 1). Specific types such as `application/pdf` become a
+  `UTI-CONFORMS-TO` predicate; prepare rejects a type with no known iOS
+  identifier, so use a wildcard such as `application/*` for those.
 - App Group `group.<application id>.pam-native` on both the app
   (`ios/App.entitlements`) and the extension; `PAM_NATIVE_APPLICATION_ID`
   fills it in. Register the App Group for both bundle ids in your Apple
@@ -144,7 +169,7 @@ All classes live in `Pam\Native\ShareExtension`.
 | `(new ShareInbox())->drain(Closure(list<SharedItem>) $complete): int` | Returns and consumes every pending item (module `share-extension`). On Android it reads the share intent that launched the current activity (text, http(s) links as `Url`, up to 32 streams copied in 64 KiB chunks) and clears it. A native failure yields an empty list. |
 | `SharedItem` (readonly) | `identifier`, `kind` (`SharedItemKind`), `value` (text or URL up to 8192 bytes, or the file name/token), `mimeType`, `createdAtMillis`. |
 | `SharedItemKind` (int enum) | `Text = 1`, `Url = 2`, `File = 3`. |
-| `ShareExtensionPluginProvider` | Plugin provider (no configuration). |
+| `ShareExtensionPluginProvider` | Plugin provider. Accepted types are configured in `pam-native.json` under `plugins.shareExtension`. |
 
 ## Production checklist
 
@@ -157,7 +182,8 @@ All classes live in `Pam\Native\ShareExtension`.
 ## Troubleshooting
 
 - **iOS items do not arrive:** verify the shared app group on both targets.
-- **Android app is absent from sharing:** inspect generated intent filters and accepted types.
+- **Android app is absent from sharing:** inspect the generated intent filters and `plugins.shareExtension.accept`.
+- **The app appears for types it should not handle:** narrow `plugins.shareExtension.accept` and rebuild.
 - **A drained file disappears:** move it into application-owned storage before returning.
 - **Native integration is stale:** run `pam doctor --fix`, rebuild the native host, and inspect the first reported diagnostic.
 
@@ -165,10 +191,11 @@ All classes live in `Pam\Native\ShareExtension`.
 
 | `pushinbr/pam-native-share-extension` | `pushinbr/pam-native` | Android | iOS |
 | --- | --- | --- | --- |
+| 0.3.0 | `>=1.16.0 <2.0.0` | API 26+ | 15+, accepted types from `plugins.shareExtension` |
 | 0.2.2 | `>=0.8.0 <2.0.0` (tested with 1.14.x) | API 26+ | 15+, files copied into the App Group with names and titles |
 | 0.2.1 | `>=0.8.0 <2.0.0` | API 26+ | 15+ |
 
-This package targets PAM Native `0.8.x` through `1.x`, Android API 26+, and iOS 15+ unless a platform-specific section above states a stricter requirement. Platform SDKs, credentials, entitlements, physical hardware, and store configuration remain application responsibilities.
+This package targets PAM Native `1.16` through `1.x`, Android API 26+, and iOS 15+ unless a platform-specific section above states a stricter requirement. Platform SDKs, credentials, entitlements, physical hardware, and store configuration remain application responsibilities.
 
 - [PAM documentation](https://push-in.github.io/pam-docs/introduction/)
 - [PAM Native overview](https://push-in.github.io/pam-docs/native/overview/)

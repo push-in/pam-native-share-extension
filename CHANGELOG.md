@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.3.0 - 2026-10-06
+
+- Accepted share types are configurable per app with `plugins.shareExtension`
+  (`accept`, `multiple`) in `pam-native.json`, read at prepare/build time.
+  Android intent filters (`SEND`, and `SEND_MULTIPLE` only for `multiple`
+  types) and the iOS Share Extension `NSExtensionActivationRule` are
+  generated from it instead of being hardcoded to `*/*`, so an app that only
+  handles media is no longer offered for PDFs.
+- The default stays `*/*`, several items at once, with the same iOS counts.
+- Requires PAM Native 1.16 (`plugins.share.v1`). The manifest fragment with
+  the `*/*` filters and the hardcoded activation rule are removed.
+- The example accepts text, images and videos.
+
 ## 0.2.2 - 2026-10-04
 
 - Copy incoming iOS file URLs into the App Group inbox and preserve the source
