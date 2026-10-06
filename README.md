@@ -85,19 +85,66 @@ For file imports on both platforms, prefer PAM Native's `IncomingShares`: it ret
 
 ## What installation does
 
-`pam add share-extension` resolves the official compatible package, performs a non-mutating Composer preflight, updates the normal `composer.json` and `composer.lock`, refreshes generated native integration when required, and leaves the project ready for `pam doctor` validation.
+`pam add share-extension` resolves the official compatible package, performs a non-mutating Composer preflight, updates the normal `composer.json` and `composer.lock`, refreshes generated native integration when required, and leaves the project ready for `pam doctor` validation. Nothing is added to `pam-native.json`.
 
 Use `pam packages` to inspect availability and `pam remove share-extension` to uninstall the capability safely. Direct Composer commands are an advanced interoperability path; PAM is the supported application workflow.
 
-## API guide
+### Android
 
-| API | Responsibility |
+The plugin manifest adds two intent filters to `PamActivity`:
+`android.intent.action.SEND` and `SEND_MULTIPLE` with `mimeType="*/*"`. No
+permissions are needed: shared content URIs are copied into the app sandbox.
+If you only want specific types (or no extra package), the core can declare
+the filters itself with `android.shareTargets` in `pam-native.json` (up to 16
+MIME patterns such as `image/*`, `video/*`, `text/plain`); that is what Zé
+Chat does.
+
+### iOS
+
+- A Share Extension target (`PamShareExtension`, bundle suffix `.share`,
+  `com.apple.share-services`) generated from `ios/ShareExtension`.
+- Activation rule: text, up to 8 web URLs, 32 files, 32 images and 8 movies.
+- App Group `group.<application id>.pam-native` on both the app
+  (`ios/App.entitlements`) and the extension; `PAM_NATIVE_APPLICATION_ID`
+  fills it in. Register the App Group for both bundle ids in your Apple
+  developer account and include it in both provisioning profiles.
+- Framework `UniformTypeIdentifiers`.
+
+## Core `IncomingShares` or `ShareInbox`?
+
+| | `Pam\Native\System\IncomingShares` (core) | `ShareInbox` (this package) |
+| --- | --- | --- |
+| Delivery | `initial(Closure(?IncomingShare))` at launch and `listen(Closure(IncomingShare))` while running | `drain(Closure(list<SharedItem>))` when you ask |
+| Files | Imported into the app sandbox as `FileReference` (`$file->path`, `$file->name`) | Android: name of a private copy in `filesDir/pam-share-inbox` (outside the `FileReference` sandbox); iOS: raw App Group file tokens |
+| Grouping | One `IncomingShare` per share (`text`, `subject`, `mimeType`, `files`) | One `SharedItem` per text, URL or file |
+
+Both consume the same iOS App Group inbox, so use one of them per app. Zé
+Chat routes shares with the core API:
+
+```php
+use Pam\Native\IncomingShare;
+use Pam\Native\System\IncomingShares;
+
+IncomingShares::initial(function (?IncomingShare $share): void {
+    if ($share !== null) {
+        $this->routeShare($share);   // pick a chat, then send $share->files / $share->text
+    }
+});
+IncomingShares::listen($this->routeShare(...));
+```
+
+A runnable minimal app using `ShareInbox` is in [`example/`](example).
+
+## API reference
+
+All classes live in `Pam\Native\ShareExtension`.
+
+| API | Description |
 | --- | --- |
-| `ShareInbox` | Drain process-safe items delivered by platform share surfaces. |
-| `SharedItem` | Read normalized text, URL, or copied-file content. |
-| `SharedItemKind` | Branch on the integer-backed item type. |
-
-All coded states, kinds, and variants are sequential integer-backed enums. Use enum cases in application code; do not depend on raw wire numbers.
+| `(new ShareInbox())->drain(Closure(list<SharedItem>) $complete): int` | Returns and consumes every pending item (module `share-extension`). On Android it reads the share intent that launched the current activity (text, http(s) links as `Url`, up to 32 streams copied in 64 KiB chunks) and clears it. A native failure yields an empty list. |
+| `SharedItem` (readonly) | `identifier`, `kind` (`SharedItemKind`), `value` (text or URL up to 8192 bytes, or the file name/token), `mimeType`, `createdAtMillis`. |
+| `SharedItemKind` (int enum) | `Text = 1`, `Url = 2`, `File = 3`. |
+| `ShareExtensionPluginProvider` | Plugin provider (no configuration). |
 
 ## Production checklist
 
@@ -115,6 +162,11 @@ All coded states, kinds, and variants are sequential integer-backed enums. Use e
 - **Native integration is stale:** run `pam doctor --fix`, rebuild the native host, and inspect the first reported diagnostic.
 
 ## Compatibility and support
+
+| `pushinbr/pam-native-share-extension` | `pushinbr/pam-native` | Android | iOS |
+| --- | --- | --- | --- |
+| 0.2.2 | `>=0.8.0 <2.0.0` (tested with 1.14.x) | API 26+ | 15+, files copied into the App Group with names and titles |
+| 0.2.1 | `>=0.8.0 <2.0.0` | API 26+ | 15+ |
 
 This package targets PAM Native `0.8.x` through `1.x`, Android API 26+, and iOS 15+ unless a platform-specific section above states a stricter requirement. Platform SDKs, credentials, entitlements, physical hardware, and store configuration remain application responsibilities.
 

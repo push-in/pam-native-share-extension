@@ -1,0 +1,20 @@
+{
+    "name": "pam-examples/share-extension-demo",
+    "description": "Minimal PAM Native app for pushinbr/pam-native-share-extension.",
+    "type": "project",
+    "license": "Apache-2.0",
+    "require": {
+        "php": "^8.5",
+        "pushinbr/pam-native": "^1.14",
+        "pushinbr/pam-native-share-extension": "^0.2.2"
+    },
+    "autoload": {
+        "psr-4": {
+            "App\\": "src/"
+        }
+    },
+    "config": {
+        "platform-check": true,
+        "sort-packages": true
+    }
+}
