@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.1
+
+- Include the process host provider manifest so cold/warm Android intents reach IncomingShares.
+
 ## 0.4.0
 
 - Owns the optional incoming shares capability extracted from the 1.46 core.

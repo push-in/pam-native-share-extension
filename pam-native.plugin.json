@@ -15,7 +15,8 @@
         "sourceDirs": [
             "android/src/main/kotlin"
         ],
-        "permissions": []
+        "permissions": [],
+        "manifest": "android/src/main/AndroidManifest.xml"
     },
     "ios": {
         "minimumVersion": "15.0",
