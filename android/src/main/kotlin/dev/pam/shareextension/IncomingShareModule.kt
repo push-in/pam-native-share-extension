@@ -1,8 +1,12 @@
 package dev.pam.shareextension
 
+import android.content.Context
 import dev.pam.nativeapp.modules.*
 
-class IncomingShareModule : NativeModule, SurfaceRetirableModule {
+class IncomingShareModule() : NativeModule, SurfaceRetirableModule {
+    /** The generated plugin registry builds every module and view factory with the app context. */
+    constructor(@Suppress("UNUSED_PARAMETER") context: Context) : this()
+
     override fun invoke(method: String, payload: ByteArray, completion: ModuleCompletion) {
         runCatching {
             when (method) {
