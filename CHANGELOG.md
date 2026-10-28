@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.0
+
+- Owns the optional incoming shares capability extracted from the 1.46 core.
+- Preserves PHP aliases and native contracts during migration.
+
+
 ## 0.3.1 - 2026-10-06
 
 - Stop requiring the `plugins.share.v1` capability: the PAM Native PHP
