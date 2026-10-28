@@ -75,7 +75,9 @@ $check(
 );
 $check(
     'Android intent filters are not hardcoded in a manifest fragment',
-    !isset($plugin['android']['manifest']) && !is_file($package . '/android/src/main/AndroidManifest.xml'),
+    ($plugin['android']['manifest'] ?? null) === 'android/src/main/AndroidManifest.xml'
+        && !str_contains((string) file_get_contents($package.'/android/src/main/AndroidManifest.xml'), '<intent-filter>')
+        && str_contains((string) file_get_contents($package.'/android/src/main/AndroidManifest.xml'), 'PluginHostProvider'),
 );
 $infoPlist = (string) file_get_contents($package . '/ios/ShareExtension/Info.plist');
 $check(
@@ -85,7 +87,7 @@ $check(
 );
 $check(
     'composer requires a PAM Native release with share configuration',
-    $json('composer.json')['require']['pushinbr/pam-native'] === '^1.16',
+    $json('composer.json')['require']['pushinbr/pam-native'] === '^1.46',
 );
 
 $example = $json('example/pam-native.json');

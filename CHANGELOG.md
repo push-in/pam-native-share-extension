@@ -1,9 +1,20 @@
 # Changelog
 
-## 0.4.2 - 2026-10-28
+## 0.4.3 - 2026-10-28
 
 - Android: `IncomingShareModule` has a `(Context)` constructor, which the
   generated plugin registry calls; 0.4.1 failed to build in a real app.
+- 0.4.2 was cut from the wrong base (0.3.1) and is withdrawn; use 0.4.3.
+
+## 0.4.1
+
+- Include the process host provider manifest so cold/warm Android intents reach IncomingShares.
+
+## 0.4.0
+
+- Owns the optional incoming shares capability extracted from the 1.46 core.
+- Preserves PHP aliases and native contracts during migration.
+
 
 ## 0.3.1 - 2026-10-06
 
