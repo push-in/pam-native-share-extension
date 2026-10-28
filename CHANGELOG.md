@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.2 - 2026-10-28
+
+- Android: `IncomingShareModule` has a `(Context)` constructor, which the
+  generated plugin registry calls; 0.4.1 failed to build in a real app.
+
 ## 0.3.1 - 2026-10-06
 
 - Stop requiring the `plugins.share.v1` capability: the PAM Native PHP
