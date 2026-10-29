@@ -211,3 +211,42 @@ Security vulnerabilities should be reported through the repository security poli
 Requires `pushinbr/pam-native` ^1.46. Install with `composer require pushinbr/pam-native-share-extension`.
 The core keeps deprecated PHP aliases through 1.46; they are removed in 1.47.
 Native wire contracts are retained. Swift compilation and device QA remain pending.
+
+### Recebimento Android com limites (0.4.4)
+
+Configure os limites na primeira leitura, antes do listener. O callback da Activity apenas marca o intent e guarda a solicitação; uma fila limitada executa as cópias fora da main thread. A ordem dos arquivos é preservada e o corte ocorre antes de copiar. Qualquer MIME de vídeo seleciona `maximumVideoItems`, inclusive em compartilhamentos mistos.
+
+```php
+IncomingShares::initial($onShare, new IncomingShareLimits(
+    maximumBytes: 314_572_800,
+    maximumItems: 20,
+    maximumVideoItems: 1,
+));
+IncomingShares::listen($onShare);
+```
+
+Importe essas classes de `Pam\Native\ShareExtension`. `maximumBytes` é positivo; `maximumItems` aceita 1–32; `maximumVideoItems` aceita 1–`maximumItems`. O limite de 300 MiB por arquivo é o padrão. O streaming usa buffer de 64 KiB e verifica o tamanho real, mesmo sem metadados confiáveis. Uma falha remove os arquivos copiados naquela solicitação.
+
+`IncomingShare::eventId` identifica o intent. Um novo compartilhamento intencional recebe outro ID, mesmo com os mesmos arquivos. A recriação que conserva o intent e seus extras conserva o ID e o marcador de consumo; a solicitação é recebida uma única vez. Não há garantia de entrega após morte do processo durante uma cópia. A API legada `ShareInbox` usa os mesmos limites padrão e marcador de consumo.
+
+Falhas de tamanho/cópia/fila chegam como `IncomingShareException`, com `reason` (`IncomingShareError::FileTooLarge`, `CopyFailed`, `QueueFull`) e `eventId`. Os códigos nativos são os inteiros 1, 2 e 3. Esses limites e o novo identificador são implementados no Android; o contrato PHP mantém o construtor anterior compatível.
+
+Testes locais sem Gradle (JDK, SDK Android 35 e jars Kotlin/JUnit previamente disponíveis no cache):
+
+```sh
+PAM_NATIVE_SOURCE=/caminho/pam-native python3 tests/run-jvm.py
+PAM_NATIVE_PHP_ROOT=/caminho/pam-native/packages/native/src php tests/run.php
+```
+
+Harness Android isolado (testa `Activity.recreate()`, cópia com metadados incorretos, remoção parcial, ordem e limites reais):
+
+```sh
+PAM_NATIVE_SOURCE=/caminho/pam-native python3 tests/build-device-test.py
+# Sob o lock exclusivo do emulador, instalar build/device/test.apk e abrir:
+adb -s emulator-5554 install -r build/device/test.apk
+adb -s emulator-5554 shell am start -n dev.pam.sharetest/dev.pam.shareextension.ShareDeviceTestActivity
+adb -s emulator-5554 logcat -d -s PamShareN6:I '*:S'
+adb -s emulator-5554 uninstall dev.pam.sharetest
+```
+
+O build do harness usa SDK Build Tools 36.1.0, sem Gradle. O resultado esperado termina em `ALL_PASS`. Esse APK é exclusivo dos testes.

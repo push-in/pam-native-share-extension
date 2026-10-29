@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.4.4 - 2026-10-29
+
+- Android: identificador estável por intent e marcador de consumo impedem reentrega em recriação da Activity.
+- Cópia em streaming fora da main thread, com limite por arquivo (300 MiB por padrão), falhas tipadas e remoção de cópias parciais.
+- Limites configuráveis pelo app antes da cópia: 20 itens e 1 quando houver vídeo por padrão.
+- PHP: `IncomingShare::eventId`, `IncomingShareLimits` e `IncomingShareException` com enum inteiro `IncomingShareError`.
+- Testes JVM de streaming, limites e identidade; contratos PHP de configuração e erros.
+
 ## 0.4.3 - 2026-10-28
 
 - Android: `IncomingShareModule` has a `(Context)` constructor, which the
