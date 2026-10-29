@@ -14,6 +14,7 @@ final readonly class IncomingShare
         public string $subject,
         public string $mimeType,
         public array $files,
+        public string $eventId = '',
     ) {
     }
 }

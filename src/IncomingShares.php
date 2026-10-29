@@ -28,9 +28,9 @@ final class IncomingShares
     }
 
     /** @param Closure(?IncomingShare): void $callback */
-    public static function initial(Closure $callback): int
+    public static function initial(Closure $callback, ?IncomingShareLimits $limits = null): int
     {
-        return NativeModules::call('incoming-share', 'initial', [], static function ($result) use ($callback): void {
+        return NativeModules::call('incoming-share', 'initial', ($limits ?? new IncomingShareLimits())->toPayload(), static function ($result) use ($callback): void {
             if ($result->status === ModuleResultStatus::Failure) {
                 throw new RuntimeException($result->payload);
             }
@@ -87,6 +87,12 @@ final class IncomingShares
     private static function decode(string $payload): ?IncomingShare
     {
         $values = Wire::decodeMap($payload);
+        if (isset($values['errorCode'])) {
+            throw new IncomingShareException(
+                IncomingShareError::from((int) $values['errorCode']),
+                (string) ($values['eventId'] ?? ''),
+            );
+        }
         if (!(bool) ($values['available'] ?? false)) {
             return null;
         }
@@ -116,6 +122,7 @@ final class IncomingShares
             subject: (string) ($values['subject'] ?? ''),
             mimeType: (string) ($values['mimeType'] ?? ''),
             files: $files,
+            eventId: (string) ($values['eventId'] ?? ''),
         );
     }
 }

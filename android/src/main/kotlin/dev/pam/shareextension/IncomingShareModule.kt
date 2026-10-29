@@ -2,6 +2,7 @@ package dev.pam.shareextension
 
 import android.content.Context
 import dev.pam.nativeapp.modules.*
+import dev.pam.nativeapp.protocol.WireMap
 
 class IncomingShareModule() : NativeModule, SurfaceRetirableModule {
     /** The generated plugin registry builds every module and view factory with the app context. */
@@ -10,7 +11,10 @@ class IncomingShareModule() : NativeModule, SurfaceRetirableModule {
     override fun invoke(method: String, payload: ByteArray, completion: ModuleCompletion) {
         runCatching {
             when (method) {
-                "initial" -> PamIncomingShares.initial(completion)
+                "initial" -> {
+                    PamIncomingShares.configure(WireMap.decode(payload))
+                    PamIncomingShares.initial(completion)
+                }
                 "next" -> PamIncomingShares.next(completion)
                 else -> error("Unknown incoming-share method $method")
             }

@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 $roots = [
     'Pam\\Native\\ShareExtension\\' => dirname(__DIR__) . '/src/',
-    'Pam\\Native\\' => dirname(__DIR__, 2) . '/../pam-native/packages/native/src/',
+    'Pam\\Native\\' => (getenv('PAM_NATIVE_PHP_ROOT') ?: dirname(__DIR__, 2) . '/../pam-native/packages/native/src') . '/',
 ];
 spl_autoload_register(static function (string $class) use ($roots): void {
     foreach ($roots as $prefix => $root) {
@@ -107,6 +107,40 @@ $check(
         && !$validShareConfig(['accept' => ['image/*'], 'multiple' => ['video/*']])
         && !$validShareConfig(['accept' => ['image/*'], 'types' => []]),
 );
+
+$limits = new \Pam\Native\ShareExtension\IncomingShareLimits();
+$check('defaults match media upload and post/reel item budgets', $limits->toPayload() === [
+    'maximumBytes' => 314_572_800, 'maximumItems' => 20, 'maximumVideoItems' => 1,
+]);
+$custom = new \Pam\Native\ShareExtension\IncomingShareLimits(1024, 5, 2);
+$check('limits configurable by app', $custom->toPayload()['maximumItems'] === 5);
+foreach ([[0, 20, 1], [1, 0, 1], [1, 33, 1], [1, 2, 3]] as $invalid) {
+    try {
+        new \Pam\Native\ShareExtension\IncomingShareLimits(...$invalid);
+        $check('invalid limits rejected', false);
+    } catch (InvalidArgumentException) {
+        $check('invalid limits rejected', true);
+    }
+}
+$check('error codes are sequential', array_column(\Pam\Native\ShareExtension\IncomingShareError::cases(), 'value') === [1, 2, 3]);
+$share = new \Pam\Native\ShareExtension\IncomingShare('', '', '', [], 'event-1');
+$check('event identifier exposed without breaking old constructors', $share->eventId === 'event-1'
+    && (new \Pam\Native\ShareExtension\IncomingShare('', '', '', []))->eventId === '');
+$decode = new ReflectionMethod(\Pam\Native\ShareExtension\IncomingShares::class, 'decode');
+$payload = \Pam\Native\Internal\Wire::map([
+    'available' => true, 'eventId' => 'stable-event', 'files' => '[]', 'text' => 'hello',
+]);
+$check('wire decoding preserves event identity', $decode->invoke(null, $payload)->eventId === 'stable-event');
+foreach (\Pam\Native\ShareExtension\IncomingShareError::cases() as $reason) {
+    try {
+        $decode->invoke(null, \Pam\Native\Internal\Wire::map([
+            'available' => false, 'eventId' => 'failed-event', 'errorCode' => $reason->value,
+        ]));
+        $check('typed native error', false);
+    } catch (\Pam\Native\ShareExtension\IncomingShareException $error) {
+        $check('typed native error', $error->reason === $reason && $error->eventId === 'failed-event');
+    }
+}
 
 echo "{$tests} tests, {$failures} failures\n";
 exit($failures === 0 ? 0 : 1);
