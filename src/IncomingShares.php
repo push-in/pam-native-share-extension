@@ -76,11 +76,15 @@ final class IncomingShares
                 unset(self::$subscriptions[$subscription]);
                 throw new RuntimeException($result->payload);
             }
-            $share = self::decode($result->payload);
-            if ($share instanceof IncomingShare) {
-                self::$subscriptions[$subscription]($share);
+            try {
+                $share = self::decode($result->payload);
+                if ($share instanceof IncomingShare) {
+                    self::$subscriptions[$subscription]($share);
+                }
+            } finally {
+                // Expected intake errors must not disable future shares.
+                self::arm($subscription);
             }
-            self::arm($subscription);
         });
     }
 

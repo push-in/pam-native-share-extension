@@ -166,7 +166,7 @@ All classes live in `Pam\Native\ShareExtension`.
 
 | API | Description |
 | --- | --- |
-| `(new ShareInbox())->drain(Closure(list<SharedItem>) $complete): int` | Returns and consumes every pending item (module `share-extension`). On Android it reads the share intent that launched the current activity (text, http(s) links as `Url`, up to 32 streams copied in 64 KiB chunks) and clears it. A native failure yields an empty list. |
+| `(new ShareInbox())->drain(Closure(list<SharedItem>) $complete): int` | Returns and consumes every pending item (module `share-extension`). On Android it reads the share intent that launched the current activity (text, http(s) links as `Url`, up to 20 streams (1 when video is present), limited to 300 MiB each and copied off the main thread in 64 KiB chunks) and marks the intent consumed. A native failure yields an empty list. |
 | `SharedItem` (readonly) | `identifier`, `kind` (`SharedItemKind`), `value` (text or URL up to 8192 bytes, or the file name/token), `mimeType`, `createdAtMillis`. |
 | `SharedItemKind` (int enum) | `Text = 1`, `Url = 2`, `File = 3`. |
 | `ShareExtensionPluginProvider` | Plugin provider. Accepted types are configured in `pam-native.json` under `plugins.shareExtension`. |
@@ -229,7 +229,7 @@ Importe essas classes de `Pam\Native\ShareExtension`. `maximumBytes` é positivo
 
 `IncomingShare::eventId` identifica o intent. Um novo compartilhamento intencional recebe outro ID, mesmo com os mesmos arquivos. A recriação que conserva o intent e seus extras conserva o ID e o marcador de consumo; a solicitação é recebida uma única vez. Não há garantia de entrega após morte do processo durante uma cópia. A API legada `ShareInbox` usa os mesmos limites padrão e marcador de consumo.
 
-Falhas de tamanho/cópia/fila chegam como `IncomingShareException`, com `reason` (`IncomingShareError::FileTooLarge`, `CopyFailed`, `QueueFull`) e `eventId`. Os códigos nativos são os inteiros 1, 2 e 3. Esses limites e o novo identificador são implementados no Android; o contrato PHP mantém o construtor anterior compatível.
+Falhas de tamanho/cópia/fila chegam como `IncomingShareException`, com `reason` (`IncomingShareError::FileTooLarge`, `CopyFailed`, `QueueFull`) e `eventId`. Os códigos nativos são os inteiros 1, 2 e 3. Exceções dos callbacks assíncronos seguem o tratamento `App::onError()` do runtime; após uma falha de entrada, o listener é rearmado para receber o próximo compartilhamento. Esses limites e o novo identificador são implementados no Android; o contrato PHP mantém o construtor anterior compatível.
 
 Testes locais sem Gradle (JDK, SDK Android 35 e jars Kotlin/JUnit previamente disponíveis no cache):
 

@@ -142,5 +142,33 @@ foreach (\Pam\Native\ShareExtension\IncomingShareError::cases() as $reason) {
     }
 }
 
+$transport = new class implements \Pam\Native\Modules\NativeModuleTransport {
+    public int $calls = 0;
+    public int $lastId = 0;
+    public function invoke(int $requestId, string $module, string $method, string $payload, Closure $complete): void
+    {
+        $this->calls++;
+        $this->lastId = $requestId;
+    }
+};
+\Pam\Native\Modules\NativeModules::useTransport($transport);
+$received = 0;
+$subscription = \Pam\Native\ShareExtension\IncomingShares::listen(static function () use (&$received): void { $received++; });
+$callbacks = new ReflectionProperty(\Pam\Native\Internal\Runtime::class, 'moduleCallbacks');
+$pending = $callbacks->getValue()[$transport->lastId];
+try {
+    $pending(\Pam\Native\ModuleResultStatus::Success, \Pam\Native\Internal\Wire::map([
+        'available' => false, 'eventId' => 'too-large', 'errorCode' => 1,
+    ]));
+} catch (\Pam\Native\ShareExtension\IncomingShareException) {
+    $check('listener rearms after a typed intake error', $transport->calls === 2);
+}
+$pending = $callbacks->getValue()[$transport->lastId];
+$pending(\Pam\Native\ModuleResultStatus::Success, $payload);
+$check('a successful share still arrives after an error', $received === 1 && $transport->calls === 3);
+\Pam\Native\ShareExtension\IncomingShares::unsubscribe($subscription);
+\Pam\Native\Modules\NativeModules::useTransport(null);
+\Pam\Native\ShareExtension\IncomingShares::resetRuntime();
+
 echo "{$tests} tests, {$failures} failures\n";
 exit($failures === 0 ? 0 : 1);
