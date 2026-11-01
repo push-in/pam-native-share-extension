@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.5 - 2026-10-31
+
+- Android: arquivos compartilhados são copiados para o sandbox privado (`pam-files/imports/`) e o `path` do `FileReference` é relativo, como no iOS. O caminho absoluto do cache não resolvia como `pam-file://`, então vídeos compartilhados abriam pretos, sem prévia nem miniaturas.
+
 ## 0.4.4 - 2026-10-29
 
 - Android: identificador estável por intent e marcador de consumo impedem reentrega em recriação da Activity.

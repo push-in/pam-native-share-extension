@@ -86,7 +86,7 @@ class ShareDeviceTestActivity : Activity() {
         PamIncomingShares.configure(mapOf("maximumBytes" to WireValue.Integer(70_000)))
         receive(share(listOf(uri("photo-1"), uri("oversize")))) { values ->
             check((values["errorCode"] as WireValue.Integer).value == 1L)
-            check(File(cacheDir, "pam-incoming-shares").listFiles().orEmpty().isEmpty())
+            check(File(filesDir, "pam-files/imports").listFiles().orEmpty().isEmpty())
             Log.i(TAG, "PASS lying size metadata rejects stream and rolls back all files")
             PamIncomingShares.configure(mapOf("maximumItems" to WireValue.Integer(3), "maximumVideoItems" to WireValue.Integer(2)))
             receive(share((1..5).map { uri("photo-$it") })) { custom ->

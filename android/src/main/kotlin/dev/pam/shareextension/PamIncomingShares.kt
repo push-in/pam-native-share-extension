@@ -168,7 +168,11 @@ internal object PamIncomingShares {
         val mime = context.contentResolver.getType(uri)
             ?: fallbackMime
             ?: "application/octet-stream"
-        val directory = File(context.cacheDir, "pam-incoming-shares").apply { mkdirs() }
+        // The PHP FileReference path is relative to the private file sandbox
+        // (filesDir/pam-files), like iOS `imports/`: an absolute cache path
+        // resolved to nothing, so shared videos opened black with no frames.
+        val sandbox = File(context.filesDir, SANDBOX_ROOT)
+        val directory = File(sandbox, IMPORT_DIRECTORY).apply { mkdirs() }
         val safeName = metadata.first
             .replace(Regex("[^A-Za-z0-9._-]"), "_")
             .take(120)
@@ -177,7 +181,7 @@ internal object PamIncomingShares {
         copied.add(target)
         copySharedFile(target, policy.maximumBytes) { context.contentResolver.openInputStream(uri) }
         return JSONObject()
-            .put("path", target.absolutePath)
+            .put("path", "$IMPORT_DIRECTORY/${target.name}")
             .put("name", metadata.first)
             .put("mimeType", mime)
             .put("size", target.length())
@@ -236,4 +240,6 @@ internal object PamIncomingShares {
     private const val CONSUMED = "dev.pam.shareextension.CONSUMED"
     private const val MAX_TEXT_BYTES = 65_536
     private const val MAX_SUBJECT_BYTES = 4_096
+    private const val SANDBOX_ROOT = "pam-files"
+    private const val IMPORT_DIRECTORY = "imports"
 }
