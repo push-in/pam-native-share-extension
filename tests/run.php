@@ -1,9 +1,12 @@
 <?php
 declare(strict_types=1);
 
+// The installed Composer graph is the PAM Native under test; a source
+// checkout is only used when PAM_NATIVE_PHP_ROOT points at one.
+$installed = dirname(__DIR__) . '/vendor/pushinbr/pam-native/packages/native/src';
 $roots = [
     'Pam\\Native\\ShareExtension\\' => dirname(__DIR__) . '/src/',
-    'Pam\\Native\\' => (getenv('PAM_NATIVE_PHP_ROOT') ?: dirname(__DIR__, 2) . '/../pam-native/packages/native/src') . '/',
+    'Pam\\Native\\' => (getenv('PAM_NATIVE_PHP_ROOT') ?: (is_dir($installed) ? $installed : dirname(__DIR__, 2) . '/../pam-native/packages/native/src')) . '/',
 ];
 spl_autoload_register(static function (string $class) use ($roots): void {
     foreach ($roots as $prefix => $root) {
