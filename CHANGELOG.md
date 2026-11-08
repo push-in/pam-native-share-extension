@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.6 - 2026-11-08
+
+- Os contratos PHP carregam o PAM Native instalado pelo Composer (ou o checkout
+  indicado em `PAM_NATIVE_PHP_ROOT`) em vez de supor um checkout irmão
+  `pam-native`; passam numa instalação Composer isolada. Sem mudança de runtime.
+
 ## 0.4.5 - 2026-10-31
 
 - Android: arquivos compartilhados são copiados para o sandbox privado (`pam-files/imports/`) e o `path` do `FileReference` é relativo, como no iOS. O caminho absoluto do cache não resolvia como `pam-file://`, então vídeos compartilhados abriam pretos, sem prévia nem miniaturas.
