@@ -1,71 +1,78 @@
-<!-- pam:product-page:start -->
 <div align="center">
 
-# PAM Native Share Extension
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset=".github/assets/banner-dark.svg">
+  <img src=".github/assets/banner-light.svg" width="880" alt="pam-native-share-extension: Receive text, URLs and files from Android shares and an iOS Share Extension.">
+</picture>
 
-**Bring content into your app from anywhere in the operating system.**
+**Bring content into your app from anywhere in the operating system.**<br>
+Receive validated text, URLs and files from Android shares and an iOS Share Extension through sandbox-safe handoff contracts.
 
-Receive validated text, URLs, and files from Android shares and an iOS Share Extension through sandbox-safe handoff contracts.
+[![Packagist](https://img.shields.io/packagist/v/pushinbr/pam-native-share-extension?label=packagist&color=f53003)](https://packagist.org/packages/pushinbr/pam-native-share-extension)
+[![Latest release](https://img.shields.io/github/v/release/push-in/pam-native-share-extension?label=release&color=e3a008)](https://github.com/push-in/pam-native-share-extension/releases/latest)
+![PHP 8.5](https://img.shields.io/badge/php-8.5-777bb4)
+[![CI](https://img.shields.io/github/actions/workflow/status/push-in/pam-native-share-extension/ci.yml?branch=main&label=ci)](https://github.com/push-in/pam-native-share-extension/actions/workflows/ci.yml)
+[![License](https://img.shields.io/github/license/push-in/pam-native-share-extension?color=1f6feb)](LICENSE)
 
-[![Latest version](https://img.shields.io/packagist/v/pushinbr/pam-native-share-extension?style=flat-square&label=stable)](https://packagist.org/packages/pushinbr/pam-native-share-extension)
-[![CI](https://img.shields.io/github/actions/workflow/status/push-in/pam-native-share-extension/ci.yml?branch=main&style=flat-square&label=CI)](https://github.com/push-in/pam-native-share-extension/actions)
-![PHP](https://img.shields.io/badge/PHP-8.5-777BB4?style=flat-square&logo=php&logoColor=white)
-![Android](https://img.shields.io/badge/Android-API%2026%2B-3DDC84?style=flat-square&logo=android&logoColor=white)
-![iOS](https://img.shields.io/badge/iOS-15%2B-000000?style=flat-square&logo=apple&logoColor=white)
-
-**[Documentation](https://push-in.github.io/pam-docs/native/overview/) · [Quick start](#quick-start) · [What you can build](#what-you-can-build) · [PAM ecosystem](https://push-in.github.io/pam-docs/ecosystem/) · [Issues](https://github.com/push-in/pam-native-share-extension/issues)**
+[Install](#install) · [Quick example](#quick-example) · [Accepted types](#choose-the-accepted-types) · [Platforms](#platform-support) · [Docs](#docs) · [Issues](https://github.com/push-in/pam-native-share-extension/issues)
 
 </div>
 
----
+<a id="install"></a>
+## <picture><img src=".github/assets/icons/terminal.svg" width="22" height="22" alt=""></picture> Install
 
-## Why PAM Native Share Extension
+Inside a PAM Native project, add only this capability:
 
-Receive validated text, URLs, and files from Android shares and an iOS Share Extension through sandbox-safe handoff contracts. The public API is strictly typed for PHP 8.5; expensive or frame-sensitive work stays in Rust or the platform SDK instead of crossing the application boundary every frame.
-
-| | |
-| --- | --- |
-| **Best for** | A focused capability you can add to any PAM Native application |
-| **Native path** | Android Sharesheet · iOS Share Extension |
-| **Application model** | Composer package + generated native integration |
-| **Design rule** | Independent module; no feed, vertical, or application template bundled |
-
-## What you can build
-
-- Save-to-app and read-later flows
-- Import media or documents from other apps
-- Create posts or messages from the system share sheet
-
-## Quick start
-
-Already have a PAM Native project? Add only this capability:
-
-```bash
+```sh
 pam composer require pushinbr/pam-native-share-extension
 pam doctor --fix
 ```
 
-New to PAM? Follow the **[five-minute PAM Native setup](https://push-in.github.io/pam-docs/native/overview/)** once, then return here. Your application stays a normal Composer project with a committed lockfile.
-<!-- pam:product-page:end -->
+New to PAM? Create a project with `pam init my-app --template native` (see the [PAM Native overview](https://push-in.github.io/pam-docs/native/overview/)), then come back here. Composer owns the manifest and the lockfile; `pam composer` runs it on PAM's verified PHP runtime.
 
-## See it in action
+<a id="quick-example"></a>
+## <picture><img src=".github/assets/icons/code.svg" width="22" height="22" alt=""></picture> Quick example
 
-Receives text, URLs and sandboxed file copies from Android `ACTION_SEND`/`ACTION_SEND_MULTIPLE` and an iOS Share Extension. Call `ShareInbox::drain()` after launch or resume.
+```php
+<?php
 
-The iOS extension keeps each share together, copies file URLs into the App Group inbox, and carries the original filename and title when the source app provides them. PAM Native's `IncomingShares` API imports these files into the app sandbox and exposes the filename as `$file->name`. Use either `IncomingShares` or this package's `ShareInbox` to consume the App Group inbox; both drain the same entries.
+declare(strict_types=1);
 
-iOS requires the generated app and extension targets to share `group.<application-id>.pam-native`; the supplied entitlements use the `PAM_NATIVE_APPLICATION_ID` build setting. Never trust shared MIME types or file contents—validate them before processing or uploading.
+use Pam\Native\ShareExtension\ShareInbox;
 
-## Install
-
-```bash
-pam add share-extension
-pam doctor
+(new ShareInbox())->drain(function (array $items): void {
+    foreach ($items as $item) {
+        // $item->kind is a typed enum; $item->value is text, URL, or a file inbox token.
+        handleSharedItem($item);
+    }
+});
 ```
 
-PAM Native generates the iOS Share Extension and Android intent filters automatically from the package manifest and the types you accept.
+Call `drain()` after launch and whenever the app resumes. Successfully returned entries are consumed, so move any file you need to retain into application-owned storage.
 
-## Choose the accepted types
+For file imports on both platforms, prefer `IncomingShares` (in `Pam\Native\ShareExtension` since 1.46): it returns `FileReference` values in the application sandbox and takes optional Android copy limits. Both APIs consume the same iOS App Group inbox, so use one of them per app. See [IncomingShares or ShareInbox?](docs/incoming-shares-vs-share-inbox.md) and [Android share limits](docs/android-share-limits.md). A runnable minimal app is in [`example/`](example).
+
+<a id="platform-support"></a>
+## <picture><img src=".github/assets/icons/grid.svg" width="22" height="22" alt=""></picture> Platform support
+
+| Platform | Support | Notes |
+| --- | --- | --- |
+| Android | API 26+ | `ACTION_SEND` / `ACTION_SEND_MULTIPLE` intent filters on `PamActivity` |
+| iOS | 15.0+ | Generated `PamShareExtension` target (bundle suffix `.share`), App Group handoff |
+| PAM Native | 1.46.0 to < 2.0.0 | From `pam-native.plugin.json`; PHP 8.5+ |
+
+<a id="requirements"></a>
+## <picture><img src=".github/assets/icons/shield.svg" width="22" height="22" alt=""></picture> Permissions and requirements
+
+| Platform | Declared by the plugin |
+| --- | --- |
+| Android | No permissions: shared content URIs are copied into the app sandbox. |
+| iOS | App Group `group.<application id>.pam-native` on the app (`ios/App.entitlements`) and the extension, filled from `PAM_NATIVE_APPLICATION_ID`; framework `UniformTypeIdentifiers`. |
+
+PAM Native generates the iOS Share Extension and Android intent filters automatically from the package manifest and the types you accept. Register the App Group for both bundle ids in your Apple developer account and include it in both provisioning profiles. Never trust shared MIME types or file contents: validate them before processing or uploading. Details: [Native integration](docs/platform-integration.md).
+
+<a id="choose-the-accepted-types"></a>
+## <picture><img src=".github/assets/icons/share.svg" width="22" height="22" alt=""></picture> Choose the accepted types
 
 By default the app is offered for every share (`*/*`), several items at once. Narrow it in `pam-native.json`; prepare/build reads it (PAM Native 1.16+):
 
@@ -87,80 +94,8 @@ By default the app is offered for every share (`*/*`), several items at once. Na
 
 With the example above a PDF share no longer lists the app, a single text or link does, and photos/videos may arrive in batches. Keep validating what arrives in PHP: the share sheet is untrusted input.
 
-## Drain the inbox
-
-```php
-use Pam\Native\ShareExtension\ShareInbox;
-
-(new ShareInbox())->drain(function (array $items): void {
-    foreach ($items as $item) {
-        // $item->kind is a typed enum; $item->value is text, URL, or a file inbox token.
-        handleSharedItem($item);
-    }
-});
-```
-
-Call `drain()` after launch and whenever the app resumes. Successfully returned entries are consumed, so move any file you need to retain into application-owned storage.
-
-For file imports on both platforms, prefer PAM Native's `IncomingShares`: it returns `FileReference` values in the application sandbox. On iOS, `ShareInbox` exposes the App Group file token and consumes the same inbox without importing that file into the application sandbox.
-
-
-## What installation does
-
-`pam add share-extension` resolves the official compatible package, performs a non-mutating Composer preflight, updates the normal `composer.json` and `composer.lock`, refreshes generated native integration when required, and leaves the project ready for `pam doctor` validation. Nothing is added to `pam-native.json`; add `plugins.shareExtension` only to narrow the accepted types.
-
-Use `pam packages` to inspect availability and `pam remove share-extension` to uninstall the capability safely. Direct Composer commands are an advanced interoperability path; PAM is the supported application workflow.
-
-### Android
-
-PAM Native adds one intent filter per accepted type to `PamActivity`:
-`android.intent.action.SEND`, plus `SEND_MULTIPLE` for the types in
-`multiple`. The default is `*/*` with both actions. No permissions are needed:
-shared content URIs are copied into the app sandbox. Types listed in the
-core `android.shareTargets` are merged into the same filters.
-
-### iOS
-
-- A Share Extension target (`PamShareExtension`, bundle suffix `.share`,
-  `com.apple.share-services`) generated from `ios/ShareExtension`.
-- Activation rule generated from `accept`/`multiple`. The default `*/*` keeps
-  text, up to 8 web URLs, 32 files, 32 images and 8 movies. `text/plain`
-  enables text and web URLs, `image/*` images (32, or 1), `video/*` movies
-  (8, or 1). Specific types such as `application/pdf` become a
-  `UTI-CONFORMS-TO` predicate; prepare rejects a type with no known iOS
-  identifier, so use a wildcard such as `application/*` for those.
-- App Group `group.<application id>.pam-native` on both the app
-  (`ios/App.entitlements`) and the extension; `PAM_NATIVE_APPLICATION_ID`
-  fills it in. Register the App Group for both bundle ids in your Apple
-  developer account and include it in both provisioning profiles.
-- Framework `UniformTypeIdentifiers`.
-
-## Core `IncomingShares` or `ShareInbox`?
-
-| | `Pam\Native\System\IncomingShares` (core) | `ShareInbox` (this package) |
-| --- | --- | --- |
-| Delivery | `initial(Closure(?IncomingShare))` at launch and `listen(Closure(IncomingShare))` while running | `drain(Closure(list<SharedItem>))` when you ask |
-| Files | Imported into the app sandbox as `FileReference` (`$file->path`, `$file->name`) | Android: name of a private copy in `filesDir/pam-share-inbox` (outside the `FileReference` sandbox); iOS: raw App Group file tokens |
-| Grouping | One `IncomingShare` per share (`text`, `subject`, `mimeType`, `files`) | One `SharedItem` per text, URL or file |
-
-Both consume the same iOS App Group inbox, so use one of them per app. Zé
-Chat routes shares with the core API:
-
-```php
-use Pam\Native\IncomingShare;
-use Pam\Native\System\IncomingShares;
-
-IncomingShares::initial(function (?IncomingShare $share): void {
-    if ($share !== null) {
-        $this->routeShare($share);   // pick a chat, then send $share->files / $share->text
-    }
-});
-IncomingShares::listen($this->routeShare(...));
-```
-
-A runnable minimal app using `ShareInbox` is in [`example/`](example).
-
-## API reference
+<a id="api-reference"></a>
+## <picture><img src=".github/assets/icons/code.svg" width="22" height="22" alt=""></picture> API reference
 
 All classes live in `Pam\Native\ShareExtension`.
 
@@ -171,7 +106,34 @@ All classes live in `Pam\Native\ShareExtension`.
 | `SharedItemKind` (int enum) | `Text = 1`, `Url = 2`, `File = 3`. |
 | `ShareExtensionPluginProvider` | Plugin provider. Accepted types are configured in `pam-native.json` under `plugins.shareExtension`. |
 
-## Production checklist
+<a id="what-you-can-build"></a>
+## <picture><img src=".github/assets/icons/sparkle.svg" width="22" height="22" alt=""></picture> What you can build
+
+- Save-to-app and read-later flows
+- Import media or documents from other apps
+- Create posts or messages from the system share sheet
+
+| | |
+| --- | --- |
+| **Native path** | Android Sharesheet · iOS Share Extension |
+| **Application model** | Composer package + generated native integration |
+| **Design rule** | Independent module; no feed, vertical or application template bundled |
+
+<a id="compatibility"></a>
+## <picture><img src=".github/assets/icons/grid.svg" width="22" height="22" alt=""></picture> Compatibility
+
+| `pushinbr/pam-native-share-extension` | `pushinbr/pam-native` | Android | iOS |
+| --- | --- | --- | --- |
+| 0.4.x | `>=1.46.0 <2.0.0` | API 26+ (copy limits since 0.4.4) | 15+; owns the incoming-share capability extracted from the core. Use 0.4.3 or newer (0.4.1 failed to build, 0.4.2 withdrawn) |
+| 0.3.1 | `>=1.16.0 <2.0.0` | API 26+ | 15+, accepted types from `plugins.shareExtension` |
+| 0.3.0 | `>=1.16.0 <2.0.0` | — | Do not use: fails plugin discovery at runtime |
+| 0.2.2 | `>=0.8.0 <2.0.0` (tested with 1.14.x) | API 26+ | 15+, files copied into the App Group with names and titles |
+| 0.2.1 | `>=0.8.0 <2.0.0` | API 26+ | 15+ |
+
+Since 1.46 the share APIs were extracted from the core into this package (requires `pushinbr/pam-native` ^1.46). The core keeps deprecated PHP aliases through 1.46; they are removed in 1.47. Native wire contracts are retained. Swift compilation and device QA remain pending.
+
+<a id="production-rules"></a>
+## <picture><img src=".github/assets/icons/shield.svg" width="22" height="22" alt=""></picture> Production rules
 
 - Drain after launch and every app resume.
 - Move files that must survive after the successful drain.
@@ -179,7 +141,10 @@ All classes live in `Pam\Native\ShareExtension`.
 - Run `pam doctor`, `pam test`, and a signed release build on every supported platform.
 - Exercise denial, cancellation, backgrounding, process restart, and offline behavior before release.
 
-## Troubleshooting
+Security vulnerabilities should be reported through the repository security policy or GitHub private vulnerability reporting, not a public issue.
+
+<a id="troubleshooting"></a>
+## <picture><img src=".github/assets/icons/terminal.svg" width="22" height="22" alt=""></picture> Troubleshooting
 
 - **iOS items do not arrive:** verify the shared app group on both targets.
 - **Android app is absent from sharing:** inspect the generated intent filters and `plugins.shareExtension.accept`.
@@ -187,66 +152,33 @@ All classes live in `Pam\Native\ShareExtension`.
 - **A drained file disappears:** move it into application-owned storage before returning.
 - **Native integration is stale:** run `pam doctor --fix`, rebuild the native host, and inspect the first reported diagnostic.
 
-## Compatibility and support
+<a id="docs"></a>
+## <picture><img src=".github/assets/icons/book.svg" width="22" height="22" alt=""></picture> Docs
 
-| `pushinbr/pam-native-share-extension` | `pushinbr/pam-native` | Android | iOS |
-| --- | --- | --- | --- |
-| 0.3.1 | `>=1.16.0 <2.0.0` | API 26+ | 15+, accepted types from `plugins.shareExtension` |
-| 0.3.0 | `>=1.16.0 <2.0.0` | — | Do not use: fails plugin discovery at runtime |
-| 0.2.2 | `>=0.8.0 <2.0.0` (tested with 1.14.x) | API 26+ | 15+, files copied into the App Group with names and titles |
-| 0.2.1 | `>=0.8.0 <2.0.0` | API 26+ | 15+ |
-
-This package targets PAM Native `1.16` through `1.x`, Android API 26+, and iOS 15+ unless a platform-specific section above states a stricter requirement. Platform SDKs, credentials, entitlements, physical hardware, and store configuration remain application responsibilities.
-
-- [PAM documentation](https://push-in.github.io/pam-docs/introduction/)
 - [PAM Native overview](https://push-in.github.io/pam-docs/native/overview/)
 - [Plugin and native capability model](https://push-in.github.io/pam-docs/native/plugins/)
+- [PAM introduction](https://push-in.github.io/pam-docs/introduction/)
+- [Changelog](CHANGELOG.md)
 - [Report an issue](https://github.com/push-in/pam-native-share-extension/issues)
+- [Native integration (Android and iOS)](docs/platform-integration.md)
+- [IncomingShares or ShareInbox?](docs/incoming-shares-vs-share-inbox.md)
+- [Android share receiving with limits (0.4.4)](docs/android-share-limits.md)
+- [Runnable example app](example/README.md)
 
-Security vulnerabilities should be reported through the repository security policy or GitHub private vulnerability reporting, not a public issue.
+<a id="pam-ecosystem"></a>
+## <picture><img src=".github/assets/icons/plug.svg" width="22" height="22" alt=""></picture> Part of the PAM ecosystem
 
+<p align="center"><picture>
+  <source media="(prefers-color-scheme: dark)" srcset=".github/assets/pam-wordmark-dark.svg">
+  <img src=".github/assets/pam-wordmark-light.svg" height="56" alt="PAM">
+</picture></p>
 
-## Core extraction (1.46)
+PAM runs PHP natively on servers, desktops and phones. This repository is one piece of it.
 
-Requires `pushinbr/pam-native` ^1.46. Install with `composer require pushinbr/pam-native-share-extension`.
-The core keeps deprecated PHP aliases through 1.46; they are removed in 1.47.
-Native wire contracts are retained. Swift compilation and device QA remain pending.
+| [**PAM**](https://github.com/push-in/pam) | [**PAM Desktop**](https://github.com/push-in/pam-desktop) | [**PAM Native**](https://github.com/push-in/pam-native) | [**Ecosystem**](https://github.com/push-in/pam#ecosystem) |
+| --- | --- | --- | --- |
+| the runtime and CLI | native desktop apps in PHP | native Android and iOS apps in PHP | every official package and plugin |
 
-### Recebimento Android com limites (0.4.4)
+<sub>Docs: [push-in.github.io/pam-docs](https://push-in.github.io/pam-docs/introduction/) · [Issues](https://github.com/push-in/pam-native-share-extension/issues)</sub>
 
-Configure os limites na primeira leitura, antes do listener. O callback da Activity apenas marca o intent e guarda a solicitação; uma fila limitada executa as cópias fora da main thread. A ordem dos arquivos é preservada e o corte ocorre antes de copiar. Qualquer MIME de vídeo seleciona `maximumVideoItems`, inclusive em compartilhamentos mistos.
-
-```php
-IncomingShares::initial($onShare, new IncomingShareLimits(
-    maximumBytes: 314_572_800,
-    maximumItems: 20,
-    maximumVideoItems: 1,
-));
-IncomingShares::listen($onShare);
-```
-
-Importe essas classes de `Pam\Native\ShareExtension`. `maximumBytes` é positivo; `maximumItems` aceita 1–32; `maximumVideoItems` aceita 1–`maximumItems`. O limite de 300 MiB por arquivo é o padrão. O streaming usa buffer de 64 KiB e verifica o tamanho real, mesmo sem metadados confiáveis. Uma falha remove os arquivos copiados naquela solicitação.
-
-`IncomingShare::eventId` identifica o intent. Um novo compartilhamento intencional recebe outro ID, mesmo com os mesmos arquivos. A recriação que conserva o intent e seus extras conserva o ID e o marcador de consumo; a solicitação é recebida uma única vez. Não há garantia de entrega após morte do processo durante uma cópia. A API legada `ShareInbox` usa os mesmos limites padrão e marcador de consumo.
-
-Falhas de tamanho/cópia/fila chegam como `IncomingShareException`, com `reason` (`IncomingShareError::FileTooLarge`, `CopyFailed`, `QueueFull`) e `eventId`. Os códigos nativos são os inteiros 1, 2 e 3. Exceções dos callbacks assíncronos seguem o tratamento `App::onError()` do runtime; após uma falha de entrada, o listener é rearmado para receber o próximo compartilhamento. Esses limites e o novo identificador são implementados no Android; o contrato PHP mantém o construtor anterior compatível.
-
-Testes locais sem Gradle (JDK, SDK Android 35 e jars Kotlin/JUnit previamente disponíveis no cache):
-
-```sh
-PAM_NATIVE_SOURCE=/caminho/pam-native python3 tests/run-jvm.py
-PAM_NATIVE_PHP_ROOT=/caminho/pam-native/packages/native/src php tests/run.php
-```
-
-Harness Android isolado (testa `Activity.recreate()`, cópia com metadados incorretos, remoção parcial, ordem e limites reais):
-
-```sh
-PAM_NATIVE_SOURCE=/caminho/pam-native python3 tests/build-device-test.py
-# Sob o lock exclusivo do emulador, instalar build/device/test.apk e abrir:
-adb -s emulator-5554 install -r build/device/test.apk
-adb -s emulator-5554 shell am start -n dev.pam.sharetest/dev.pam.shareextension.ShareDeviceTestActivity
-adb -s emulator-5554 logcat -d -s PamShareN6:I '*:S'
-adb -s emulator-5554 uninstall dev.pam.sharetest
-```
-
-O build do harness usa SDK Build Tools 36.1.0, sem Gradle. O resultado esperado termina em `ALL_PASS`. Esse APK é exclusivo dos testes.
+<p align="center"><sub><a href="LICENSE">Apache License 2.0</a> · Made in Brazil by Pushin</sub></p>
