@@ -57,7 +57,7 @@ For file imports on both platforms, prefer `IncomingShares` (in `Pam\Native\Shar
 
 | Platform | Support | Notes |
 | --- | --- | --- |
-| Android | API 26+ | `ACTION_SEND` / `ACTION_SEND_MULTIPLE` intent filters on `PamActivity` |
+| Android | API 24+ | `ACTION_SEND` / `ACTION_SEND_MULTIPLE` intent filters on `PamActivity` |
 | iOS | 15.0+ | Generated `PamShareExtension` target (bundle suffix `.share`), App Group handoff |
 | PAM Native | 1.46.0 to < 2.0.0 | From `pam-native.plugin.json`; PHP 8.5+ |
 
