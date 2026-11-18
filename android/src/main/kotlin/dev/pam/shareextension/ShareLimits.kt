@@ -10,12 +10,15 @@ internal data class ShareLimits(
     val maximumBytes: Long = 314_572_800,
     val maximumItems: Int = 20,
     val maximumVideoItems: Int = 1,
+    /** Shared files older than this are deleted on the next start (released ones go at once). */
+    val retentionHours: Int = 24,
 ) {
     fun itemLimit(hasVideo: Boolean): Int = if (hasVideo) maximumVideoItems else maximumItems
 
     init {
         require(maximumBytes > 0) { "maximumBytes must be positive" }
         require(maximumItems in 1..32 && maximumVideoItems in 1..maximumItems) { "Invalid share item limits" }
+        require(retentionHours in 1..720) { "Invalid share retention" }
     }
 }
 

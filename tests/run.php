@@ -120,11 +120,12 @@ $check(
 
 $limits = new \Pam\Native\ShareExtension\IncomingShareLimits();
 $check('defaults match media upload and post/reel item budgets', $limits->toPayload() === [
-    'maximumBytes' => 314_572_800, 'maximumItems' => 20, 'maximumVideoItems' => 1,
+    'maximumBytes' => 314_572_800, 'maximumItems' => 20, 'maximumVideoItems' => 1, 'retentionHours' => 24,
 ]);
 $custom = new \Pam\Native\ShareExtension\IncomingShareLimits(1024, 5, 2);
 $check('limits configurable by app', $custom->toPayload()['maximumItems'] === 5);
-foreach ([[0, 20, 1], [1, 0, 1], [1, 33, 1], [1, 2, 3]] as $invalid) {
+$check('retention configurable by app', (new \Pam\Native\ShareExtension\IncomingShareLimits(retentionHours: 6))->toPayload()['retentionHours'] === 6);
+foreach ([[0, 20, 1], [1, 0, 1], [1, 33, 1], [1, 2, 3], [1, 2, 1, 0], [1, 2, 1, 721]] as $invalid) {
     try {
         new \Pam\Native\ShareExtension\IncomingShareLimits(...$invalid);
         $check('invalid limits rejected', false);
@@ -177,6 +178,26 @@ $pending = $callbacks->getValue()[$transport->lastId];
 $pending(\Pam\Native\ModuleResultStatus::Success, $payload);
 $check('a successful share still arrives after an error', $received === 1 && $transport->calls === 3);
 \Pam\Native\ShareExtension\IncomingShares::unsubscribe($subscription);
+
+$sent = [];
+$releaseTransport = new class($sent) implements \Pam\Native\Modules\NativeModuleTransport {
+    public function __construct(private array &$sent) {}
+    public function invoke(int $requestId, string $module, string $method, string $payload, Closure $complete): void
+    {
+        $this->sent[] = [$module, $method, \Pam\Native\Internal\Wire::decodeMap($payload), $requestId];
+    }
+};
+\Pam\Native\Modules\NativeModules::useTransport($releaseTransport);
+$released = null;
+\Pam\Native\ShareExtension\IncomingShares::release($share, static function (bool $done) use (&$released): void { $released = $done; });
+$callbacks->getValue()[$sent[0][3]](\Pam\Native\ModuleResultStatus::Success, \Pam\Native\Internal\Wire::map(['released' => true]));
+$check('release sends the event id and reports the deletion', $sent[0][0] === 'incoming-share' && $sent[0][1] === 'release'
+    && $sent[0][2] === ['eventId' => 'event-1'] && $released === true);
+$legacy = null;
+$check('a share without event id is never sent', \Pam\Native\ShareExtension\IncomingShares::release(
+    new \Pam\Native\ShareExtension\IncomingShare('', '', '', []),
+    static function (bool $done) use (&$legacy): void { $legacy = $done; },
+) === null && $legacy === false && count($sent) === 1);
 \Pam\Native\Modules\NativeModules::useTransport(null);
 \Pam\Native\ShareExtension\IncomingShares::resetRuntime();
 

@@ -53,6 +53,14 @@ final class IncomingShareModuleTests: XCTestCase {
                 XCTAssertEqual(file["name"] as? String, "original.jpg")
                 XCTAssertEqual(try Data(contentsOf: privateRoot.appendingPathComponent(path)),
                                Data("photo bytes".utf8))
+                guard case let .text(eventId)? = values["eventId"] else {
+                    XCTFail("Incoming share has no event id")
+                    return
+                }
+                XCTAssertTrue(path.hasPrefix("imports/incoming/\(eventId)/"))
+                // The app releases the share once it is done with its files.
+                XCTAssertTrue(IncomingShareStorage.release(root: privateRoot, eventId: eventId))
+                XCTAssertFalse(FileManager.default.fileExists(atPath: privateRoot.appendingPathComponent(path).path))
                 XCTAssertFalse(FileManager.default.fileExists(
                     atPath: inbox.appendingPathComponent(fileName).path
                 ))
@@ -70,6 +78,30 @@ final class IncomingShareModuleTests: XCTestCase {
             second.fulfill()
         }
         wait(for: [second], timeout: 10)
+    }
+
+    func testSweepDeletesExpiredSharesAndLegacyCopiesOnly() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent("pam-share-sweep-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: root) }
+        let manager = FileManager.default
+        func file(_ path: String, age: TimeInterval) throws {
+            let url = root.appendingPathComponent(path)
+            try manager.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try Data("x".utf8).write(to: url)
+            let date = Date().addingTimeInterval(-age)
+            try manager.setAttributes([.modificationDate: date], ofItemAtPath: url.path)
+            try manager.setAttributes([.modificationDate: date], ofItemAtPath: url.deletingLastPathComponent().path)
+        }
+        let day: TimeInterval = 86_400
+        try file("imports/incoming/old/incoming-1.jpg", age: day + 60)
+        try file("imports/incoming/new/incoming-2.jpg", age: 60)
+        try file("imports/incoming-3.mp4", age: day + 60)
+        try file("imports/gallery-4.jpg", age: day * 30)
+        XCTAssertEqual(IncomingShareStorage.sweep(root: root, now: Date(), maxAge: day), 2)
+        XCTAssertFalse(manager.fileExists(atPath: root.appendingPathComponent("imports/incoming/old").path))
+        XCTAssertTrue(manager.fileExists(atPath: root.appendingPathComponent("imports/incoming/new/incoming-2.jpg").path))
+        XCTAssertTrue(manager.fileExists(atPath: root.appendingPathComponent("imports/gallery-4.jpg").path))
+        XCTAssertFalse(IncomingShareStorage.release(root: root, eventId: "../x"))
     }
 
     func testPendingListenerReceivesShareWhenAppBecomesActive() throws {

@@ -17,6 +17,7 @@ public final class IncomingShareModule: NativeModule, ClosableNativeModule {
     private var waiter: ModuleCompletion? = nil
     private var activationObserver: NSObjectProtocol? = nil
     private var closed = false
+    private var swept = false
 
     public init(
         groupName: String? = nil,
@@ -41,6 +42,16 @@ public final class IncomingShareModule: NativeModule, ClosableNativeModule {
     }
 
     public func invoke(method: String, payload: Data, completion: @escaping ModuleCompletion) {
+        if method == "release" {
+            let values = (try? WireMap.decode(payload)) ?? [:]
+            var eventId = ""
+            if case let .text(value)? = values["eventId"] { eventId = value }
+            queue.async {
+                let released = IncomingShareStorage.release(root: self.privateRoot, eventId: eventId)
+                completion(.success, (try? WireMap.encode(["released": .flag(released)])) ?? Data())
+            }
+            return
+        }
         guard method == "initial" || method == "next" else {
             completion(.failure, Data("Unknown incoming-share method \(method)".utf8))
             return
@@ -49,6 +60,13 @@ public final class IncomingShareModule: NativeModule, ClosableNativeModule {
             guard !self.closed else {
                 completion(.failure, Data("Incoming-share module is closed".utf8))
                 return
+            }
+            if method == "initial" && !self.swept {
+                // Once per runtime start, before the initial share is copied.
+                self.swept = true
+                var hours: Int64 = 24
+                if case let .integer(value)? = (try? WireMap.decode(payload))?["retentionHours"] { hours = min(max(value, 1), 720) }
+                IncomingShareStorage.sweep(root: self.privateRoot, now: Date(), maxAge: TimeInterval(hours) * 3_600)
             }
             if method == "next" && self.waiter != nil {
                 completion(.failure, Data("Only one incoming-share listener can wait at a time".utf8))
@@ -109,6 +127,7 @@ public final class IncomingShareModule: NativeModule, ClosableNativeModule {
         var files: [[String: Any]] = []
         var copied: [URL] = []
         var sources: [URL] = []
+        let eventId = UUID().uuidString.lowercased()
         do {
             for row in group {
                 let kind = SharedInboxItemKind(
@@ -130,6 +149,7 @@ public final class IncomingShareModule: NativeModule, ClosableNativeModule {
                 case .some(.file):
                     guard files.count < 10 else { continue }
                     let item = try copyFile(
+                        eventId: eventId,
                         named: value,
                         displayName: (row["name"] as? String) ?? value,
                         mimeType: normalizedType
@@ -144,6 +164,7 @@ public final class IncomingShareModule: NativeModule, ClosableNativeModule {
             }
             let payload = try WireMap.encode([
                 "available": .flag(!text.isEmpty || !files.isEmpty),
+                "eventId": .text(eventId),
                 "text": .text(text),
                 "subject": .text(boundedText((first["subject"] as? String) ?? "", maximumBytes: 4_096)),
                 "mimeType": .text(mimeType),
@@ -159,12 +180,13 @@ public final class IncomingShareModule: NativeModule, ClosableNativeModule {
             return payload
         } catch {
             copied.forEach { try? FileManager.default.removeItem(at: $0) }
+            _ = IncomingShareStorage.release(root: privateRoot, eventId: eventId)
             throw error
         }
     }
 
     private func copyFile(
-        named name: String, displayName: String, mimeType: String
+        eventId: String, named name: String, displayName: String, mimeType: String
     ) throws -> (source: URL, destination: URL, reference: [String: Any]) {
         guard let groupRoot,
               !name.isEmpty,
@@ -184,7 +206,8 @@ public final class IncomingShareModule: NativeModule, ClosableNativeModule {
             throw IncomingShareError("Shared file exceeds 64 MiB or is not regular")
         }
         let suffix = UTType(mimeType: mimeType)?.preferredFilenameExtension ?? "bin"
-        let relative = "imports/incoming-\(UUID().uuidString).\(suffix)"
+        // One directory per event: IncomingShares::release() and the retention sweep delete it.
+        let relative = "\(IncomingShareStorage.incomingDirectory)/\(eventId)/incoming-\(UUID().uuidString).\(suffix)"
         let destination = privateRoot.appendingPathComponent(relative)
         try FileManager.default.createDirectory(
             at: destination.deletingLastPathComponent(), withIntermediateDirectories: true

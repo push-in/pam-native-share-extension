@@ -38,6 +38,33 @@ final class IncomingShares
         });
     }
 
+    /**
+     * Deletes the files the plugin copied for one share (its
+     * `FileReference`s) once the app is done with them: published, sent,
+     * copied elsewhere or discarded. Files never released are deleted on a
+     * later start, after `IncomingShareLimits::$retentionHours` (24 by
+     * default). They live in the private file sandbox, so the system "Clear
+     * cache" does not remove them.
+     *
+     * @param null|Closure(bool): void $then receives whether files were deleted
+     */
+    public static function release(IncomingShare|string $share, ?Closure $then = null): ?int
+    {
+        $eventId = $share instanceof IncomingShare ? $share->eventId : $share;
+        if (preg_match('/^[A-Za-z0-9-]{1,64}$/', $eventId) !== 1) {
+            // Older native sides deliver no event id: the retention sweep covers them.
+            $then?->__invoke(false);
+
+            return null;
+        }
+
+        return NativeModules::call('incoming-share', 'release', ['eventId' => $eventId], static function ($result) use ($then): void {
+            $released = $result->status !== ModuleResultStatus::Failure
+                && (bool) (Wire::decodeMap($result->payload)['released'] ?? false);
+            $then?->__invoke($released);
+        });
+    }
+
     /** @param Closure(IncomingShare): void $callback */
     public static function listen(Closure $callback): int
     {

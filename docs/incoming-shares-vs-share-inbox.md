@@ -26,3 +26,24 @@ IncomingShares::listen($this->routeShare(...));
 ```
 
 A runnable minimal app using `ShareInbox` is in [`example/`](../example).
+
+## Lifetime of shared files
+
+`IncomingShares` copies each shared file into the private file sandbox
+(`pam-files/imports/incoming/<eventId>/`), because a `FileReference` must
+resolve there. The system "Clear cache" does not reach that folder, so:
+
+- Call `IncomingShares::release($share)` once the app is done with the files
+  (published, sent, copied elsewhere or discarded). It deletes that share's
+  folder; `$then` receives whether anything was deleted.
+- Files that were never released are deleted on a later start, before the
+  initial share is read, once they are older than
+  `IncomingShareLimits::$retentionHours` (24 by default, 1–720). Copies left
+  by older versions directly in `imports/` (`incoming-*`) are swept the same
+  way.
+
+```php
+IncomingShares::initial($this->routeShare(...), new IncomingShareLimits(retentionHours: 24));
+// after publishing or leaving the composer:
+IncomingShares::release($share);
+```

@@ -16,4 +16,4 @@ sources+=list((api/'dev/pam/nativeapp/protocol').glob('*.kt'))+[api/'dev/pam/nat
 out=r/'build/jvm';out.mkdir(parents=True,exist_ok=True)
 if __name__ == "__main__":
     subprocess.run(['java','-Xmx3g','-cp',':'.join(compiler),'org.jetbrains.kotlin.cli.jvm.K2JVMCompiler','-no-stdlib','-no-reflect','-classpath',':'.join(libs),'-d',str(out),*map(str,sources)],check=True)
-    subprocess.run(['java','-Xmx3g','-cp',':'.join([str(out),*libs]),'org.junit.runner.JUnitCore','dev.pam.shareextension.ShareLimitsTest','dev.pam.shareextension.ReloadListenersTest'],check=True)
+    subprocess.run(['java','-Xmx3g','-cp',':'.join([str(out),*libs]),'org.junit.runner.JUnitCore','dev.pam.shareextension.ShareLimitsTest','dev.pam.shareextension.ReloadListenersTest','dev.pam.shareextension.IncomingShareStorageTest'],check=True)

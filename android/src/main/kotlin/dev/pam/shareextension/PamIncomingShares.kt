@@ -67,9 +67,31 @@ internal object PamIncomingShares {
             val items = number("maximumItems", limits.maximumItems.toLong())
             val videoItems = number("maximumVideoItems", limits.maximumVideoItems.toLong())
             require(items in 1L..32L && videoItems in 1L..items) { "Invalid share item limits" }
-            limits = ShareLimits(number("maximumBytes", limits.maximumBytes), items.toInt(), videoItems.toInt())
+            val retention = number("retentionHours", limits.retentionHours.toLong())
+            require(retention in 1L..720L) { "Invalid share retention" }
+            limits = ShareLimits(number("maximumBytes", limits.maximumBytes), items.toInt(), videoItems.toInt(), retention.toInt())
         }
     }
+
+    /**
+     * Once per runtime start, before the initial share is copied: deletes
+     * shared files older than the retention (the app never released them).
+     */
+    fun sweepExpired(context: Context) {
+        val retention = synchronized(lock) { limits.retentionHours }
+        val sandbox = File(context.applicationContext.filesDir, SANDBOX_ROOT)
+        runCatching {
+            worker.execute {
+                runCatching {
+                    IncomingShareStorage.sweep(sandbox, System.currentTimeMillis(), retention * 3_600_000L)
+                }
+            }
+        }
+    }
+
+    /** Deletes the files of one delivered share event (the app is done with them). */
+    fun release(context: Context, eventId: String): Boolean =
+        IncomingShareStorage.release(File(context.applicationContext.filesDir, SANDBOX_ROOT), eventId)
 
     private fun deliver(request: Request, completion: ModuleCompletion) {
         val policy = limits
@@ -140,10 +162,12 @@ internal object PamIncomingShares {
             uris.any { context.contentResolver.getType(it).orEmpty().startsWith("video/", ignoreCase = true) }
         val selected = uris.take(policy.itemLimit(hasVideo))
         val copied = mutableListOf<File>()
+        val sandbox = File(context.filesDir, SANDBOX_ROOT)
         try {
-            selected.forEach { uri -> files.put(copyIntoSandbox(context, uri, intent.type, policy, copied)) }
+            selected.forEach { uri -> files.put(copyIntoSandbox(context, uri, intent.type, policy, eventId, copied)) }
         } catch (error: Exception) {
             copied.forEach { it.delete() }
+            IncomingShareStorage.release(sandbox, eventId)
             throw error
         }
         val text = intent.getStringExtra(Intent.EXTRA_TEXT).orEmpty().take(MAX_TEXT_BYTES)
@@ -162,7 +186,7 @@ internal object PamIncomingShares {
         )
     }
 
-    private fun copyIntoSandbox(context: Context, uri: Uri, fallbackMime: String?, policy: ShareLimits, copied: MutableList<File>): JSONObject {
+    private fun copyIntoSandbox(context: Context, uri: Uri, fallbackMime: String?, policy: ShareLimits, eventId: String, copied: MutableList<File>): JSONObject {
         val metadata = queryMetadata(context, uri)
         if (metadata.second > policy.maximumBytes) throw ShareTooLargeException()
         val mime = context.contentResolver.getType(uri)
@@ -171,8 +195,10 @@ internal object PamIncomingShares {
         // The PHP FileReference path is relative to the private file sandbox
         // (filesDir/pam-files), like iOS `imports/`: an absolute cache path
         // resolved to nothing, so shared videos opened black with no frames.
+        // One directory per event: IncomingShares::release() and the
+        // retention sweep delete it (IncomingShareStorage).
         val sandbox = File(context.filesDir, SANDBOX_ROOT)
-        val directory = File(sandbox, IMPORT_DIRECTORY).apply { mkdirs() }
+        val directory = IncomingShareStorage.eventDirectory(sandbox, eventId).apply { mkdirs() }
         val safeName = metadata.first
             .replace(Regex("[^A-Za-z0-9._-]"), "_")
             .take(120)
@@ -181,7 +207,7 @@ internal object PamIncomingShares {
         copied.add(target)
         copySharedFile(target, policy.maximumBytes) { context.contentResolver.openInputStream(uri) }
         return JSONObject()
-            .put("path", "$IMPORT_DIRECTORY/${target.name}")
+            .put("path", IncomingShareStorage.relativePath(eventId, target))
             .put("name", metadata.first)
             .put("mimeType", mime)
             .put("size", target.length())
@@ -241,5 +267,4 @@ internal object PamIncomingShares {
     private const val MAX_TEXT_BYTES = 65_536
     private const val MAX_SUBJECT_BYTES = 4_096
     private const val SANDBOX_ROOT = "pam-files"
-    private const val IMPORT_DIRECTORY = "imports"
 }
