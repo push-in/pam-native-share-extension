@@ -89,8 +89,15 @@ $check(
         && str_contains($infoPlist, 'com.apple.share-services'),
 );
 $check(
-    'composer requires a PAM Native release with share configuration',
-    $json('composer.json')['require']['pushinbr/pam-native'] === '^1.46',
+    'composer requires a PAM Native release with share configuration (1.46+) matching the manifest',
+    (static function () use ($json): bool {
+        $required = ltrim((string) $json('composer.json')['require']['pushinbr/pam-native'], '^');
+        $required = preg_match('/^\d+\.\d+$/', $required) === 1 ? $required . '.0' : $required;
+        $range = $json('pam-native.plugin.json')['pamNative'];
+        return version_compare($required, '1.46.0', '>=')
+            && version_compare($required, (string) $range['minimum'], '==')
+            && $range['maximumExclusive'] === '2.0.0';
+    })(),
 );
 
 $example = $json('example/pam-native.json');
