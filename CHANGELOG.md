@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5.0 - 2026-11-18
+
+- Fixed: shared files live in imports/incoming/<eventId>/; IncomingShares::release() deletes them and files older than retentionHours (default 24) are swept on start.
+
 ## 0.4.8 - 2026-11-18
 
 - Tests: the PAM Native range check follows the requirement in composer.json
